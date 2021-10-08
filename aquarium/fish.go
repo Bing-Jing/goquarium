@@ -32,6 +32,7 @@ func (goq *Goquarium) generateBubbles() {
 		bubble.Shape = bubbleShape
 		bubble.MovementCallback = termination.UpMovement
 		bubble.DefaultColor = 'c'
+		bubble.MovesPerSecond = 5
 		bubble.FramesPerSecond = 2
 		bubble.DeathOnLastFrame = true
 		time.Sleep(3 * time.Second)
@@ -48,6 +49,9 @@ func (goq *Goquarium) deadWhale(term *termination.Termination, entity *terminati
 
 func (goq *Goquarium) deadShark(term *termination.Termination, entity *termination.Entity) {
 	goq.addShark()
+}
+func (goq *Goquarium) deadSnake(term *termination.Termination, entity *termination.Entity) {
+	goq.addSnake()
 }
 
 func (goq *Goquarium) addWhale() {
@@ -71,6 +75,7 @@ func (goq *Goquarium) addWhale() {
 		whale.MovementCallback = termination.RightMovement
 	}
 	//fish.Death = goq.deadFish
+	whale.MovesPerSecond = random(5,20)
 	whale.FramesPerSecond = 10
 }
 
@@ -95,7 +100,31 @@ func (goq *Goquarium) addShark() {
 		shark.MovementCallback = termination.RightMovement
 	}
 	//fish.Death = goq.deadFish
+	shark.MovesPerSecond = random(2,10)
 	shark.FramesPerSecond = 10
+}
+func (goq *Goquarium) addSnake(){
+	direction := []string{"right","left"}[random(0,1)]
+	width := goq.term.Width
+	position := termination.Position{X: -53, Y: 0, Z: 50}
+	if direction == "left" {
+		position = termination.Position{X: width + 53, Y: 0, Z: 50}
+	}
+
+	snake := goq.term.NewEntity(position)
+	snake.Shape = snakeShape
+	snake.DeathOnOffScreen = true
+	snake.ColorMask = snakeMask
+	snake.ShapePath = direction
+	snake.DefaultColor = 'W'
+	snake.DeathCallback = goq.deadSnake
+	if direction == "left" {
+		snake.MovementCallback = termination.LeftMovement
+	}else{
+		snake.MovementCallback = termination.RightMovement
+	}
+	snake.MovesPerSecond = random(2,10)
+	snake.FramesPerSecond = 10
 }
 
 func (goq *Goquarium) addFish() {
@@ -104,7 +133,7 @@ func (goq *Goquarium) addFish() {
 	fishShape := fishShapes[fishSelection]
 	fishMask := fishMasks[fishSelection]
 
-	direction := []string{"left", "right"}[random(0, 2)]
+	direction := []string{"left", "right","left", "right","Randomleft", "Randomright", "upleft", "downleft", "downright", "upright"}[random(0, 10)]
 
 	// we unfortunately have to iterate to get its height before insert...
 	shapeData := []rune(fishShape["left"][0])
@@ -118,39 +147,57 @@ func (goq *Goquarium) addFish() {
 	height := goq.term.Height - shapeHeight
 	width := goq.term.Width
 	randY := random(9, height)
-	speed := random(5, 10)
+	speed := random(7, 20)
 	// TODO: lots of duplicate code here
-	if direction == "left" {
+	if direction == "left" || direction == "upleft" || direction == "downleft" || direction == "Randomleft" {
 		fish := goq.term.NewEntity(termination.Position{X: width + 10, Y: randY, Z: 5})
 		fish.Shape = fishShape
 		fish.DeathOnOffScreen = true
 		fish.ColorMask = fishMask
 		fish.ShapePath = "left"
-		fish.MovementCallback = termination.LeftMovement
+		if direction == "left" {
+			fish.MovementCallback = termination.LeftMovement
+		}else if direction == "upleft"{
+			fish.MovementCallback = termination.UpLeftMovement
+		}else if direction == "downleft"{
+			fish.MovementCallback = termination.DownLeftMovement
+		}else{
+			fish.MovementCallback = termination.RandomLeftMovement
+		}
 		fish.DeathCallback = goq.deadFish
-		fish.FramesPerSecond = speed
+		fish.MovesPerSecond = speed
+		fish.FramesPerSecond = 10
 		goq.fishes = append(goq.fishes, fish)
-	} else {
+	} else if direction == "right" || direction == "upright" || direction == "downright" {
 		fish := goq.term.NewEntity(termination.Position{X: -10, Y: randY, Z: 5})
-		fish.DeathOnOffScreen = true
 		fish.Shape = fishShape
-		fish.DeathCallback = goq.deadFish
+		fish.DeathOnOffScreen = true
 		fish.ColorMask = fishMask
 		fish.ShapePath = "right"
-		fish.MovementCallback = termination.RightMovement
-		fish.FramesPerSecond = speed
+		if direction == "right" {
+			fish.MovementCallback = termination.RightMovement
+		}else if direction == "upright"{
+			fish.MovementCallback = termination.UpRightMovement
+		}else if direction == "downright"{
+			fish.MovementCallback = termination.DownRightMovement
+		}else{
+			fish.MovementCallback = termination.RandomRightMovement
+		}
+		fish.DeathCallback = goq.deadFish
+		fish.MovesPerSecond = speed
+		fish.FramesPerSecond = 10
 		goq.fishes = append(goq.fishes, fish)
 	}
 }
 
 func (goq *Goquarium) generateFishes() {
-	screenSize := (goq.term.Height - 9) * goq.term.Width
-	fishCount := int(screenSize / 200)
+	// screenSize := (goq.term.Height - 9) * goq.term.Width
+	// fishCount := int(screenSize / 200)
 
 	// keep adding fish when we need
-	for i := 0; i < fishCount; i++ {
+	for {
 		goq.addFish()
-		time.Sleep(500 * time.Millisecond) // space out the fish a bit
+		time.Sleep(1000 * time.Millisecond) // space out the fish a bit
 	}
 }
 
@@ -164,7 +211,7 @@ func (goq *Goquarium) setupEnvironment() {
 	for i := 0; i < needed; i++ {
 		surface := term.NewEntity(termination.Position{X: i * 4, Y: top_y, Z: 10})
 		surface.Shape = surfaceShape
-		surface.ColorMask = waterMask
+		surface.ColorMask = surfaceMask
 		surface.FramesPerSecond = 1
 		goq.surface = append(goq.surface, surface)
 
@@ -187,10 +234,10 @@ func (goq *Goquarium) setupEnvironment() {
 	goq.castle.DefaultColor = 'W'
 
 	//grass is a bit random
-	seaweedCount := width / 15
+	seaweedCount := 15
 	for i := 0; i < seaweedCount; i++ {
 		rand.Seed(int64(time.Now().Nanosecond()))
-		seaweedHeight := random(1, 7)
+		seaweedHeight := random(10, 20)
 		seaweedX := random(0, width)
 		path := []string{"a", "b"}
 		h := 0
@@ -228,13 +275,14 @@ func Fish() {
 	term := termination.New()
 	//term.Debug="./debug.out"
 	goquarium.term = term
-	term.FramesPerSecond = 10
+	term.FramesPerSecond = 60
 	goquarium.setupEnvironment()
 
 	go goquarium.generateBubbles()
 	go goquarium.generateFishes()
 	goquarium.addWhale()
 	goquarium.addShark()
+	goquarium.addSnake()
 	go term.Animate()
 
 	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
